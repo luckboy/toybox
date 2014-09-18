@@ -77,6 +77,7 @@ nodelete:
 
 void rm_main(void)
 {
+  struct stat st;
   char **s;
 
   // Can't use <1 in optstring because zero arguments with -f isn't an error
@@ -90,7 +91,11 @@ void rm_main(void)
 
     // Files that already don't exist aren't errors for -f, so try a quick
     // unlink now to see if it succeeds or reports that it didn't exist.
-    if ((toys.optflags & FLAG_f) && (!unlink(*s) || errno == ENOENT))
+    // Paths should be checked whether doesn't indicate to directory before invoke unlink().
+    // Because some systems allow to remove directory by unlink() for superuser.
+    errno = 0;
+    if ((toys.optflags & FLAG_f) 
+    	&& ((!lstat(*s, &st) && !S_ISDIR(st.st_mode) && !unlink(*s)) || errno == ENOENT))
       continue;
 
     // There's a race here where a file removed between the above check and
